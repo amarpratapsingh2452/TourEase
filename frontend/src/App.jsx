@@ -34,6 +34,7 @@ import NotFound from "./components/NotFound";
 import TripPlanner from './pages/TripPlanner';
 import Footer from "./components/Footer";
 import WatchDemoPage from './pages/DemoSection';
+import ScrollToTopOnNavigate from "./components/common/ScrollToTopOnNavigate";
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = Boolean(localStorage.getItem("token"));
@@ -56,6 +57,7 @@ function AppRoutes() {
 
   return (
     <>
+      <ScrollToTopOnNavigate /> 
       {showNavigation && <Navigation />}
       <ScrollToTopButton />
       <LanguageSelector />
