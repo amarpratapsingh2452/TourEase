@@ -29,10 +29,11 @@ export const api = {
     }
 
     const response = await fetch(url, config);
-    const data = await response.json();
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
 
     if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+      throw new Error(data.message || data.error || 'Something went wrong');
     }
 
     return data;
@@ -111,5 +112,51 @@ export const api = {
   async getWeatherDisruptions(location, startDate, endDate) {
     const params = new URLSearchParams({ location, startDate, endDate });
     return this.request(`/weather/disruptions?${params}`);
+  },
+
+  // --- Smart Trip Planner ---
+  async generateSmartItinerary(tripData) {
+    return this.request('/smart-planner/generate-itinerary', {
+      method: 'POST',
+      body: tripData,
+    });
+  },
+
+  async saveSmartItinerary(payload) {
+    return this.request('/smart-planner/save', {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
+  async getSavedSmartItineraries() {
+    return this.request('/smart-planner/saved-itineraries');
+  },
+
+  async getSavedSmartItinerary(id) {
+    return this.request(`/smart-planner/saved-itineraries/${id}`);
+  },
+
+  async updateSmartItinerary(id, payload) {
+    return this.request(`/smart-planner/saved-itineraries/${id}`, {
+      method: 'PATCH',
+      body: payload,
+    });
+  },
+
+  async deleteSmartItinerary(id) {
+    return this.request(`/smart-planner/saved-itineraries/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async toggleSmartItineraryFavorite(id) {
+    return this.request(`/smart-planner/saved-itineraries/${id}/favorite`, {
+      method: 'PATCH',
+    });
+  },
+
+  async getUserItineraries() {
+    return this.request('/itinerary/user');
   },
 };
