@@ -96,7 +96,7 @@ function AppRoutes() {
             <Route path="/auth" element={<PageTransition><Auth /></PageTransition>} />
             <Route path="/signup" element={<Navigate to="/auth?mode=signup" replace />} />
             <Route path="/login" element={<Navigate to="/auth?mode=login" replace />} />
-            <Route path="/favorites" element={<PageTransition><AddFavorite /></PageTransition>} />
+            <Route path="/favorites" element={<ProtectedRoute><PageTransition><AddFavorite /></PageTransition></ProtectedRoute>} />
             <Route path="/destinations/:id" element={<PageTransition><DestinationDetails /></PageTransition>} />
             <Route path="/plan-trip" element={<PageTransition><PlanTrip /></PageTransition>} />
             <Route path="/dynamic-planner" element={<PageTransition><DynamicPlannerPage /></PageTransition>} />
