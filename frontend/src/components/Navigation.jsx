@@ -23,6 +23,7 @@ export default function Navigation() {
     { path: "/trip-planner", label: "Trip Planner" },
     { path: "/smart-trip-planner", label: "Smart Planner" },
     { path: "/split-expense", label: "Expense Splitter" },
+    { path: "/currency-converter", label: "Currency" },
   ];
 
   const isActive = (path) => location.pathname === path;
