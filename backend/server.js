@@ -41,6 +41,7 @@ app.use('/api/itinerary', itineraryRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/smart-planner', smartPlannerRoutes);
+app.use('/api/expenses', expenseRoutes);
 app.use('/api/locker', lockerRoutes);
 
 // Health check route
