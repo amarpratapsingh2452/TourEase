@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
+dotenv.config();
 const helmet = require("helmet");
 const morgan = require("morgan");
 const passport = require("./config/passport");
@@ -19,7 +20,7 @@ const chatRoutes = require("./routes/chatroutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const lockerRoutes = require("./routes/lockerRoutes");
 
-dotenv.config();
+
 
 const app = express();
 
