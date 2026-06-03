@@ -18,14 +18,17 @@ import {
   X,
   ArrowLeft,
   Star,
+  History,
 } from "lucide-react";
-import { api } from "../services/api"; // Import the centralized API service
+import { api } from "../services/api";
 
 function formatItinerary(plan) {
   if (!plan) return null;
   const lines = plan.split("\n").filter(Boolean);
 
   return lines.map((line, index) => {
+    const normalized = line.replace(/\*\*/g, "");
+
     // Day headings
     if (line.startsWith("**Day")) {
       return (
@@ -33,36 +36,53 @@ function formatItinerary(plan) {
           key={index}
           className="mt-8 mb-3 text-xl font-bold text-teal-600 dark:text-teal-400"
         >
-          {line.replace(/\*\*/g, "")}
+          {normalized}
         </h3>
       );
     }
 
-    // Section headings (Morning / Afternoon / Evening / Budget)
+    // Section headings (MUST-VISIT / TRIP DETAILS / WEATHER NOTES / TRAVEL DETAILS)
     if (
-      line.includes("Morning") ||
-      line.includes("Afternoon") ||
-      line.includes("Evening") ||
-      line.includes("Budget")
+      normalized.toUpperCase().includes("MUST-VISIT") ||
+      normalized.toUpperCase().includes("TRIP DETAILS:") ||
+      normalized.toUpperCase().includes("TRAVEL DETAILS:") ||
+      normalized.toUpperCase().includes("WEATHER NOTES:")
     ) {
+      return (
+        <h4
+          key={index}
+          className="mt-6 mb-2 text-lg font-bold text-gray-900 dark:text-gray-100"
+        >
+          {normalized}
+        </h4>
+      );
+    }
+
+    // Subsections like Travel Details and Weather
+    if (
+      normalized.startsWith("Travel Details:") ||
+      normalized.startsWith("Weather:")
+    ) {
+      const [label, ...rest] = normalized.split(":");
       return (
         <p
           key={index}
-          className="mt-4 font-semibold text-gray-900 dark:text-gray-100"
+          className="mt-3 text-gray-800 dark:text-gray-200 leading-relaxed"
         >
-          {line.replace(/\*\*/g, "")}
+          <span className="font-semibold">{label}:</span>{" "}
+          {rest.join(":").trim()}
         </p>
       );
     }
 
     // Bullet points
-    if (line.trim().startsWith("*")) {
+    if (line.trim().startsWith("- ") || line.trim().startsWith("*")) {
       return (
         <li
           key={index}
           className="ml-6 list-disc text-gray-700 dark:text-gray-300"
         >
-          {line.replace("*", "").trim()}
+          {line.replace(/^[-*]\s*/, "").trim()}
         </li>
       );
     }
@@ -73,7 +93,7 @@ function formatItinerary(plan) {
         key={index}
         className="mt-2 text-gray-700 dark:text-gray-300 leading-relaxed"
       >
-        {line}
+        {normalized}
       </p>
     );
   });
@@ -137,6 +157,7 @@ export default function TripPlanner() {
   const [generatedPlan, setGeneratedPlan] = useState(null);
   const [refinementInput, setRefinementInput] = useState("");
   const [isRefining, setIsRefining] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const isStep1Valid =
     formData.destination.trim() !== "" &&
@@ -191,10 +212,7 @@ export default function TripPlanner() {
   };
 
   const handleEndDateChange = (value) => {
-    setFormData((prev) => ({
-      ...prev,
-      endDate: value,
-    }));
+    setFormData((prev) => ({ ...prev, endDate: value }));
   };
 
   const handleGenerate = async () => {
@@ -207,7 +225,6 @@ export default function TripPlanner() {
     setError("");
 
     try {
-      // Use the centralized api service instead of a hardcoded fetch
       const data = await api.generateTrip(formData);
 
       if (!data.plan || data.plan.trim().length === 0) {
@@ -227,7 +244,6 @@ export default function TripPlanner() {
     if (!refinementInput.trim()) return;
     setIsRefining(true);
     try {
-      // Use the centralized api service instead of a hardcoded fetch
       const data = await api.refineTrip(generatedPlan, refinementInput);
 
       if (!data.updatedPlan || data.updatedPlan.trim().length === 0) {
@@ -245,7 +261,8 @@ export default function TripPlanner() {
   };
 
   const handleStartOver = () => {
-    setGeneratedPlan(null);
+    setShowResetConfirm(false);
+    setGeneratedPlane(null);
     setStep(1);
     setFormData({
       destination: "",
@@ -282,7 +299,7 @@ export default function TripPlanner() {
               <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6 flex items-center">
                 <MapPin className="w-6 h-6 mr-3 text-teal-500" /> Trip Summary
               </h2>
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-4 gap-6">
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-4">
                   <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">
                     Destination
@@ -306,6 +323,20 @@ export default function TripPlanner() {
                   <p className="text-lg font-bold text-gray-900 dark:text-white">
                     {formData.travelers}{" "}
                     {formData.travelers === 1 ? "Person" : "People"}
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">
+                    Budget & Interests
+                  </p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                    {formData.budget.charAt(0).toUpperCase() +
+                      formData.budget.slice(1)}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    {formData.interests.length > 0
+                      ? formData.interests.join(", ")
+                      : "General travel"}
                   </p>
                 </div>
               </div>
@@ -333,12 +364,14 @@ export default function TripPlanner() {
               onChange={(e) => setRefinementInput(e.target.value)}
               placeholder="e.g. Make it more budget friendly, add local food spots..."
               rows={3}
-              className="w-full p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 outline-none focus:ring-2 focus:ring-teal-500/20 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+              className="w-full p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 outline-none focus:ring-2 focus:ring-teal-500/20 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
             />
             <button
               onClick={handleRefine}
               disabled={isRefining}
-              className={`mt-4 px-6 py-3 rounded-xl font-bold text-white transition-all ${isRefining ? "bg-gray-400" : "bg-teal-500 hover:bg-teal-600"}`}
+              className={`mt-4 px-6 py-3 rounded-xl font-bold text-white transition-all ${
+                isRefining ? "bg-gray-400" : "bg-teal-500 hover:bg-teal-600"
+              }`}
             >
               {isRefining ? "Refining..." : "Refine Itinerary"}
             </button>
@@ -346,7 +379,7 @@ export default function TripPlanner() {
 
           <div className="flex flex-wrap gap-4 justify-center">
             <button
-              onClick={handleStartOver}
+              onClick={() => setShowResetConfirm(true)}
               className="px-8 py-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold flex items-center"
             >
               <ArrowLeft className="w-5 h-5 mr-2" /> Plan Another Trip
@@ -355,10 +388,48 @@ export default function TripPlanner() {
               onClick={() => window.print()}
               className="px-8 py-4 bg-teal-500 text-white rounded-xl font-bold shadow-lg shadow-teal-500/30"
             >
-              Print Itinerary
+              Print / Save as PDF
             </button>
           </div>
+          <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            When the print dialog appears, choose "Save as PDF" to download your
+            itinerary.
+          </p>
         </div>
+        {showResetConfirm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          Reset Trip Plan?
+        </h3>
+        <button
+          onClick={() => setShowResetConfirm(false)}
+          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">
+        Are you sure you want to reset your trip plan? Your current itinerary will be lost and cannot be recovered.
+      </p>
+      <div className="flex gap-3">
+        <button
+          onClick={() => setShowResetConfirm(false)}
+          className="flex-1 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleStartOver}
+          className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all"
+        >
+          Yes, Reset
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     );
   }
@@ -398,19 +469,31 @@ export default function TripPlanner() {
               <React.Fragment key={s.num}>
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${step >= s.num ? "bg-teal-500 text-white shadow-lg shadow-teal-500/40" : "bg-gray-200 dark:bg-gray-800 text-gray-400"}`}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${
+                      step >= s.num
+                        ? "bg-teal-500 text-white shadow-lg shadow-teal-500/40"
+                        : "bg-gray-200 dark:bg-gray-800 text-gray-400"
+                    }`}
                   >
                     {s.num}
                   </div>
                   <span
-                    className={`text-sm mt-2 font-semibold ${step >= s.num ? "text-teal-600 dark:text-teal-400" : "text-gray-400"}`}
+                    className={`text-sm mt-2 font-semibold ${
+                      step >= s.num
+                        ? "text-teal-600 dark:text-teal-400"
+                        : "text-gray-400"
+                    }`}
                   >
                     {s.label}
                   </span>
                 </div>
                 {idx < 3 && (
                   <div
-                    className={`flex-1 h-1 mx-4 rounded transition-all ${step > s.num ? "bg-teal-500" : "bg-gray-200 dark:bg-gray-800"}`}
+                    className={`flex-1 h-1 mx-4 rounded transition-all ${
+                      step > s.num
+                        ? "bg-teal-500"
+                        : "bg-gray-200 dark:bg-gray-800"
+                    }`}
                   />
                 )}
               </React.Fragment>
@@ -439,7 +522,7 @@ export default function TripPlanner() {
                     setFormData({ ...formData, destination: e.target.value })
                   }
                   placeholder="e.g., Paris, Tokyo, Bali..."
-                  className="w-full bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-teal-500/20 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+                  className="w-full bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-teal-500/20 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
                 />
               </div>
               <div className="grid md:grid-cols-2 gap-6">
@@ -527,7 +610,11 @@ export default function TripPlanner() {
                     <button
                       key={b}
                       onClick={() => setFormData({ ...formData, budget: b })}
-                      className={`py-4 px-6 rounded-xl font-bold transition-all ${formData.budget === b ? "bg-teal-500 text-white shadow-lg shadow-teal-500/40" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
+                      className={`py-4 px-6 rounded-xl font-bold transition-all ${
+                        formData.budget === b
+                          ? "bg-teal-500 text-white shadow-lg shadow-teal-500/40"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                      }`}
                     >
                       {b.charAt(0).toUpperCase() + b.slice(1)}
                     </button>
@@ -547,15 +634,27 @@ export default function TripPlanner() {
                     <button
                       key={interest.id}
                       onClick={() => toggleInterest(interest.id)}
-                      className={`bg-white dark:bg-gray-900 p-8 rounded-2xl border-2 transition-all ${isSelected ? "border-teal-500 shadow-xl shadow-teal-500/20" : "border-gray-200 dark:border-gray-800"}`}
+                      className={`bg-white dark:bg-gray-900 p-8 rounded-2xl border-2 transition-all ${
+                        isSelected
+                          ? "border-teal-500 shadow-xl shadow-teal-500/20"
+                          : "border-gray-200 dark:border-gray-800"
+                      }`}
                     >
                       <div
-                        className={`w-16 h-16 rounded-xl flex items-center justify-center mb-4 mx-auto transition-all ${isSelected ? "bg-teal-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600"}`}
+                        className={`w-16 h-16 rounded-xl flex items-center justify-center mb-4 mx-auto transition-all ${
+                          isSelected
+                            ? "bg-teal-500 text-white"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-600"
+                        }`}
                       >
                         <Icon className="w-8 h-8" />
                       </div>
                       <h3
-                        className={`font-bold text-lg ${isSelected ? "text-teal-600 dark:text-teal-400" : "text-gray-900 dark:text-white"}`}
+                        className={`font-bold text-lg ${
+                          isSelected
+                            ? "text-teal-600 dark:text-teal-400"
+                            : "text-gray-900 dark:text-white"
+                        }`}
                       >
                         {interest.label}
                       </h3>
@@ -615,7 +714,11 @@ export default function TripPlanner() {
                 <button
                   onClick={handleGenerate}
                   disabled={isGenerating || !isStep1Valid || !isStep3Valid}
-                  className={`px-12 py-4 rounded-xl font-bold text-lg transition-all shadow-lg inline-flex items-center text-white ${isGenerating || !isStep1Valid || !isStep3Valid ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600 active:scale-95 shadow-orange-500/30"}`}
+                  className={`px-12 py-4 rounded-xl font-bold text-lg transition-all shadow-lg inline-flex items-center text-white ${
+                    isGenerating || !isStep1Valid || !isStep3Valid
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-orange-500 hover:bg-orange-600 active:scale-95 shadow-orange-500/30"
+                  }`}
                 >
                   {isGenerating ? (
                     "Generating..."
@@ -645,7 +748,11 @@ export default function TripPlanner() {
                 disabled={
                   (step === 1 && !isStep1Valid) || (step === 3 && !isStep3Valid)
                 }
-                className={`ml-auto px-8 py-3.5 rounded-xl font-bold transition-all shadow-lg inline-flex items-center text-white ${(step === 1 && !isStep1Valid) || (step === 3 && !isStep3Valid) ? "bg-gray-300 cursor-not-allowed opacity-60" : "bg-teal-500 hover:bg-teal-600 shadow-teal-500/30 active:scale-95"}`}
+                className={`ml-auto px-8 py-3.5 rounded-xl font-bold transition-all shadow-lg inline-flex items-center text-white ${
+                  (step === 1 && !isStep1Valid) || (step === 3 && !isStep3Valid)
+                    ? "bg-gray-300 cursor-not-allowed opacity-60"
+                    : "bg-teal-500 hover:bg-teal-600 shadow-teal-500/30 active:scale-95"
+                }`}
               >
                 Continue <ChevronRight className="ml-2 w-5 h-5" />
               </button>

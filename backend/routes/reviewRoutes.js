@@ -5,12 +5,14 @@ const {
   deleteReview,
   likeReview,
 } = require("../controllers/reviewController");
+const { verifyToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
+// Public: anyone can read reviews
 router.get("/:destinationId", getReviewsByDestination);
-router.post("/:destinationId", createReview);
-router.delete("/:reviewId", deleteReview);
-router.patch("/:reviewId/like", likeReview);
+router.post("/:destinationId", verifyToken, createReview);
+router.delete("/:reviewId", verifyToken, deleteReview);
+router.patch("/:reviewId/like", verifyToken, likeReview);
 
 module.exports = router;

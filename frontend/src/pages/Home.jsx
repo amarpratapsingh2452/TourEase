@@ -229,7 +229,7 @@ export default function Home() {
 
                 <Link
                   to="/destinations"
-                  className="px-8 py-3.5 bg-white/5 border border-white/10 backdrop-blur-md text-white hover:bg-white/10 rounded-xl font-bold transition-all duration-300 active:scale-95 text-md flex items-center justify-center min-w-[180px]"
+                  className="px-8 py-3.5 border bg-white border-black/80 text-black dark:bg-black dark:border-white/80 dark:text-white rounded-xl font-bold transition-all duration-500 hover:scale-105 flex items-center justify-center min-w-[180px]"
                 >
                   Explore Features
                 </Link>
